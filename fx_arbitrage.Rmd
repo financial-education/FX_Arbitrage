@@ -1,0 +1,485 @@
+---
+title: "Foreign Exchange Arbitrage"
+author: "Matt Brigida"
+date: "`r Sys.Date()`"
+runtime: shiny
+output: 
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: true
+#output:
+#  rmdformats::downcute:
+#    downcute_theme: "chaos"
+#    self_contained: true
+#    thumbnails: true
+#    lightbox: true
+#    gallery: false
+#    highlight: tango
+---
+
+## Arbitrage in Foreign Exchange (FX) Markets
+
+In this presentation we'll cover three arbitrages that are common in FX markets.  These are:
+
+-  Locational Arbitrage
+-  Triangular Arbitrage
+-  Covered Interest Arbitrage
+
+## Importance
+
+Understanding these arbitrages is important in understanding how the FX market works.
+
+-  Arbitrage will ensure that you always get a reasonable price in a liquid market.
+
+-  So as the manager of a corporation, you can be sure you won't get a bad cross or forward rate.
+
+## Locational Arbitrage
+
+Say we have two banks, East and West.  Ignoring bid/ask spreads, East quotes USD 1.50/GBP, and West quotes USD 1.40/GBP.
+
+-  We can then simultaneously buy GBP at West, and sell at East, and earn USD 0.10 for every GBP traded in the arbitrage.
+
+
+Note that in this presentation we will be using the following common abbreviations:
+
+- EUR: Euros
+- GBP: U.K. Pounds
+- USD: U.S. Dollars
+- CHF: Swiss Francs
+- CAD: Canadian Dollars
+- AUD: Australian Dollars
+- JPY: Japanese Yen
+
+## Locational Arbitrage with Bid/Ask
+
+Now consider East quotes USD 1.50/1.55 for GBP, and West quotes USD 1.56/1.58.  The notation refers to the bid/ask.  Is there an arbitrage opportunity?
+
+-  Yes, buy 1 GBP from East for USD 1.55, and sell it to West for USD 1.56, earning USD 0.01 per GBP traded.
+
+What about if East quotes USD 1.50/1.55 for GBP, and West quotes USD 1.54/1.58?  Is there an arbitrage opportunity?
+
+-  No, you would be buying a GBP at East for USD 1.55 and selling at West for USD 1.54, thereby losing USD 0.01 per GBP traded.
+
+
+##
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+#{{{
+library(shiny)
+library(DiagrammeR)
+
+ui = shinyUI(fluidPage(
+## pageWithSidebar(
+## headerPanel("Triangular Arbitrage"),
+## sidebarPanel(
+titlePanel("Locational Arbitrage Calculator"),
+
+fluidRow(
+    column(3, numericInput("bidUsdeurY", "Bid: Bank Y", value = 1.29)),
+    column(3, numericInput("askUsdeurY", "Ask: Bank Y", value = 1.31)),
+    column(3, numericInput("bidUsdeurZ", "Bid: Bank Z", value = 1.25)),
+    column(3, numericInput("askUsdeurZ", "Ask: Bank Z", value = 1.27))
+    ## column(3, radioButtons("currency.p2", "Currency to State Profit", choices = c("EUR", "USD"), selected = "EUR"))
+    ),
+fluidRow(
+    column(12,
+           ## mainPanel( ##tabsetPanel(## can I make this a fluidrow so can print $ arb below? 
+           DiagrammeROutput('diagram2', width = "100%")
+           )
+    )#,
+## fluidRow(
+##     ## column(3, plotOutput("test5")),
+##     column(12,
+##            plotOutput("test8", width = "100%")
+##            )
+##     )
+    )
+             )
+server = function(input, output){
+
+    output$diagram2 <- renderDiagrammeR({
+
+        askUsdeurY <- input$askUsdeurY
+        askUsdeurZ <- input$askUsdeurZ
+
+        bidUsdeurY <- input$bidUsdeurY
+        bidUsdeurZ <- input$bidUsdeurZ
+        
+        if(askUsdeurY < bidUsdeurY | askUsdeurZ < bidUsdeurZ){
+mermaid("
+graph LR
+  A(Ask must be greater than bid)
+")
+        } else {
+            
+            if (askUsdeurZ < bidUsdeurY){
+                mermaid(paste("
+sequenceDiagram
+Bank Z->>You: Buy 1 EUR for USD", askUsdeurZ, "
+You->>Bank Y: Sell 1 EUR for USD", bidUsdeurY, "
+You->>You: Profit: USD", round(bidUsdeurY - askUsdeurZ, 2), "
+"))
+            } else {
+                if(askUsdeurY < bidUsdeurZ){
+                mermaid(paste("
+sequenceDiagram
+Bank Y->>You: Buy 1 EUR for USD", askUsdeurY, "
+You->>Bank Z: Sell 1 EUR for USD", bidUsdeurZ, "
+You->>You: Profit: USD", round(bidUsdeurZ - askUsdeurY, 2), "
+"))
+            } else {
+                mermaid("
+graph LR
+  A(No Arbitrage)
+")
+
+            }
+            }
+        }
+    })
+    
+    ## output$test8 <- renderPlot({
+
+        
+    ##     plot(0, ylim = c(0,1), xlim = c(0,1), type = "n", xaxt = "n", yaxt = "n", ylab = "", xlab = "")
+    ##     ## if(input$currency.p2 == "EUR"){
+    ##         ## text(x = 0.5, y = 0.5, labels = paste("EUR", round(10, 2), sep = " "), cex = 5)
+    ##     ## } else {
+    ##         text(x = 0.5, y = 0.5, labels = paste("USD", round(10, 2), sep = " "), cex = 5)
+    ##     ## }
+    ## })
+}
+
+shinyApp(ui = ui, server = server)
+#}}}
+```
+
+
+## Currency Cross Rates
+
+Before talking about triangular arbitrage, it is helpful to define a 'cross rate.'
+
+-  A currency cross-rate is an exchange rate that does not involve the USD.
+
+-  For example, EUR/CHF and GBP/AUD are cross rates.  CHF/USD is *not* a cross-rate.
+
+
+## Calculating Cross-Rates
+
+Given direct or indirect quotes (quotes involving the USD) we can calculate the cross-rate.
+
+-  For example, say it is USD 1.5/GBP and USD 0.8/CHF.  Then it is $\frac{1.5}{0.8} = \text{CHF}\ 1.875/\text{USD}$.
+
+-  To know that 1.875 is the amount of CHF for a GBP, you can manipulate the units algebraically: $\frac{\frac{USD}{GBP}}{\frac{USD}{CHF}} = \frac{USD}{GBP}\frac{CHF}{USD} = \frac{CHF}{GBP}$
+
+-  Or simply note that it must be more than 1 CHF for a GBP, and not vice versa.
+
+
+## Triangular Arbitrage
+
+Triangular arbitrage takes advantage of mispriced cross-rates.  For example, if you open your terminal and see the following quotes:
+
+-  USD 1.2/EUR
+-  USD 1.5/GBP
+-  EUR 1.3/GBP
+
+
+Is there an arbitrage opportunity?
+
+
+## Triangular Arbitrage
+
+Let's check.  The cross-rate implied by the USD/EUR and USD/GBP quotes is EUR 1.25/GBP.  However, the quote on our terminal is EUR 1.3/GBP, so yes, there is an arbitrage.
+
+-  We'll replicate buying the cross rate at EUR 1.25/GBP by trading through the USD/EUR and USD/GBP.  We'll also sell GBP for the quoted rate of EUR 1.3/GBP.  Doing so correctly will earn us EUR 0.05.
+
+
+## Triangular Arbitrage
+
+-  Starting in USD, we first have to decide if we buy EUR or GBP.  The key is to note that at EUR 1.3/GBP we are given too many EUR for 1 GBP.  So we want to sell GBP for EUR here.
+
+-  This tells us we want to go from USD to GBP, then from GBP to EUR, and finally back to USD. The arbitrage gets its name from the triangular route which we are taking through currencies.
+
+
+## Triangular Arbitrage
+
+-  So starting with USD 1.5, we convert it into GBP 1.
+-  We then take the GBP 1 and convert it into EUR 1.3.
+-  Finally we cover the EUR 1.3 into EUR 1.3 * USD 1.2/EUR = USD 1.56.
+-  We return the USD 1.5, and are left with a profit of USD 0.06.  Note, USD 0.06 converts into a profit of EUR 0.05 (0.06/1.2).  This matches the profit we expected from the beginning: the difference in the cross rates.
+
+In the following app, you can put in any values for the exchange rates and see a sequence diagram of the arbitrage.  You can also choose to see a triangle diagram (scroll down to see the profit).
+
+
+##
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+#{{{
+library(shiny)
+library(DiagrammeR)
+
+ui = shinyUI(fluidPage(
+## pageWithSidebar(
+## headerPanel("Triangular Arbitrage"),
+## sidebarPanel(
+titlePanel("Triangular Arbitrage Calculator"),
+
+fluidRow(
+    column(3, numericInput("usdeur1", "USD/EUR", value = 1.20)),
+    column(3, numericInput("usdgbp1", "USD/GBP", value = 1.50)),
+    column(3, numericInput("eurgbp1", "EUR/GBP", value = 1.30)),
+    ## column(3, radioButtons("currency.p1", "Currency to State Profit", choices = c("EUR", "USD"), selected = "EUR"))
+    column(3, radioButtons("triDiag", "Triangle Diagram", choices = c("Yes", "No"), selected = "No"))
+    ),
+fluidRow(
+    column(12,
+           ## mainPanel( ##tabsetPanel(## can I make this a fluidrow so can print $ arb below? 
+           DiagrammeROutput('diagram', width = "100%")
+           )
+    ),
+fluidRow(
+    ## column(3, plotOutput("test5")),
+    column(12,
+           plotOutput("test4", width = "100%")
+           )
+    )
+    )
+             )
+server = function(input, output){
+
+    output$diagram <- renderDiagrammeR({
+
+        if(input$triDiag == "No"){
+            cross <- input$usdgbp1 / input$usdeur1          
+            if (cross > input$eurgbp1){
+                usd <- 1
+                euro <- 1/input$usdeur1
+                pound <- euro / input$eurgbp1
+                usd.profit <- pound * input$usdgbp1 - 1
+                mermaid(paste("
+sequenceDiagram
+USD->>EUR: USD 1 to EUR", round(euro, 2), "
+EUR->>GBP: EUR ", round(euro, 2), " to GBP ", round(pound, 2), "
+GBP->>USD: GBP ", round(pound, 2), " to USD ", round(usd, 2), "
+USD->>USD: Repay USD 1 and profit USD ", round(usd.profit, 2), "
+"))
+            } else {
+                usd <- 1
+                pound <- usd / input$usdgbp1
+                euro <- pound * input$eurgbp1
+                usd.profit <<- euro * input$usdeur1 - 1
+                mermaid(paste("
+sequenceDiagram
+USD->>GBP: USD 1 to GBP", round(pound, 2), "                         
+GBP->>EUR: GBP ", round(pound, 2), " to EUR ", round(euro, 2), "                                
+EUR->>USD: EUR ", round(euro, 2), " to USD ", round(usd, 2), "
+USD->>USD: Repay USD 1 and profit USD ", round(usd.profit, 2), "
+"))        
+            }
+            
+        } else {
+       
+    ## output$diagram <- renderDiagrammeR({
+
+        cross <- input$usdgbp1 / input$usdeur1
+        ## eur.profit <- abs(cross - input$eurgbp1)
+        ## usd.profit <- eur.profit * input$usdeur1
+
+        if (cross > input$eurgbp1){
+            mermaid("
+graph LR
+GBP(GBP)-->USD(USD)
+EUR(EUR)-->GBP(GBP)
+USD(USD)-->EUR(EUR)
+")
+
+        } else {
+            mermaid("
+graph LR
+EUR(EUR)-->USD(USD)
+GBP(GBP)-->EUR(EUR)
+USD(USD)-->GBP(GBP)
+")
+        }
+        }
+                                        })
+                                       
+    output$test4 <-         renderPlot({
+
+        cross <- input$usdgbp1 / input$usdeur1
+
+        if (cross > input$eurgbp1){
+            usd <- 1
+            euro <- 1/input$usdeur1
+            pound <- euro / input$eurgbp1
+            usd.profit <- pound * input$usdgbp1 - 1
+
+            plot(0, ylim = c(0,1), xlim = c(0,1), type = "n", xaxt = "n", yaxt = "n", ylab = "", xlab = "")
+            text(x = 0.5, y = 0.5, labels = paste("USD", round(usd.profit, 2), sep = " "), cex = 5)
+
+        } else {
+            usd <- 1
+            pound <- usd / input$usdgbp1
+            euro <- pound * input$eurgbp1
+            usd.profit <<- euro * input$usdeur1 - 1 
+            plot(0, ylim = c(0,1), xlim = c(0,1), type = "n", xaxt = "n", yaxt = "n", ylab = "", xlab = "")
+            text(x = 0.5, y = 0.5, labels = paste("USD", round(usd.profit, 2), sep = " "), cex = 5)
+        }
+    })
+}
+
+shinyApp(ui = ui, server = server)
+#}}}
+```
+
+
+
+## Covered Interest Arbitrage
+
+Given spot FX rates and interest rates, covered interest arbitrage will tell us what the forward/futures rate must be.
+
+-  Covered interest arbitrage exploits interest rate differentials using forward/futures contracts to mitigate FX risk.
+
+-  It ensures that you get a reasonable futures price for currency if you are trading in a liquid market.
+
+
+## A Simple Example
+
+Say *both* the spot and one-year forward rate of the GBP is USD 1.5/GBP.  Let the one-year interest rate in the US and UK be 2% and 5% respectively.
+
+-  An arbitrage exists.  Borrow USD 1.5 at 2% and convert it into GBP 1 and lend it at 4%.  Also enter into a forward to sell GBP 1.04 one year forward at USD 1.5/GBP.
+
+-  At the end of 1 year, you receive your GBP 1.04, convert it to USD 1.56, and repay the USD 1.53 you owe from your loan, leaving you with a USD 0.03 arbitrage profit.
+
+
+
+## Calculator
+
+The following app will calculate covered interest arbitrage profits given a set of inputs.
+
+- The solid lines are transactions made immediately.  The dotted lines are transactions which were arranged immediately, but do not take place until the expiration of the forward contract.
+
+-  The interest rates must match the term of the forward contract. For example, if the forward expires in 6 months, then the interest rates are 6 month (not annualized) rates.
+
+
+##
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, error=FALSE}
+#{{{
+library(shiny)
+library(DiagrammeR)
+
+ui = shinyUI(fluidPage(
+titlePanel("Covered Interest Arbitrage Calculator"),
+
+fluidRow(
+    column(3, numericInput("fxS", "Spot USD/EUR", value = 1.50)),
+    column(3, numericInput("fxF", "Forward USD/EUR", value = 1.31)),
+    ## column(3, numericInput("time", "Length of Time (in years)", value = 1)),
+    column(3, numericInput("irateU", "Interest Rate: USD", value = 0.05)),
+    column(3, numericInput("irateE", "Interest Rate: EUR", value = 0.03))
+    ),
+fluidRow(
+    column(12,
+           DiagrammeROutput('diagram7', width = "100%")
+           )
+    )
+    )
+             )
+
+server = function(input, output){
+
+    output$diagram7 <- renderDiagrammeR({
+
+        fxS <- input$fxS
+        fxF <- input$fxF
+        irateU <- input$irateU
+        irateE <- input$irateE
+        ## time <- input$time
+
+        ## direction 1 Profit
+
+        ## borrow 1 USD and convert to EUR @ Spot
+        ## invest in EUR @ rate for Period
+        ## enter into forward to convert back
+        ## repay 1 USD + interest
+        profit1 <- ((1/fxS) * (1 + irateE)) * fxF - 1 * (1 + irateU)
+     
+        ## direction 2 Profit
+
+        ## borrow 1 EUR and convert to USD @ Spot
+        ## invest in USD @ rate for Period
+        ## enter into forward to convert back
+        ## repay 1 EUR + interest
+
+        profit2 <- ((1 * fxS) * (1 + irateU)) / fxF - 1 * (1 + irateE)
+
+        
+        
+        if(irateE <= 0 | irateU <= 0 | fxS <=- 0 | fxF <= 0){
+mermaid("
+graph LR
+  A(All values must be greater than 0)
+")
+        } else {
+            
+            if (profit1 > 0 & profit2 < 0){
+                mermaid(paste("
+sequenceDiagram
+US Bank->>You: Borrow 1 USD
+You->>Spot Market: Convert 1 USD to ", round(1/fxS, 4), " EUR
+You->>European Bank: Invest at ", irateE, " for 1 period
+You->>Forward Market: Sell ", round((1/fxS)*(1+irateE), 4), " EUR forward at ", fxF, "
+Forward Market->>You: Receive ", round((1/fxS)*(1+irateE) * fxF, 4), " from foward sale
+You->>US Bank: Repay USD ", round(1 * (1+irateU), 4), " owed
+You->>You: Profit USD ", round(profit1, 4), "
+"))
+            } else {
+                if(profit1 < 0 & profit2 > 0){
+                mermaid(paste("
+sequenceDiagram
+European Bank->>You: Borrow 1 EUR
+You->>Spot Market: Convert 1 EUR to ", round(1 * fxS, 4), " USD
+You->>US Bank: Invest at ", irateU, " for 1 period
+You->>Forward Market: Sell ", round((1 * fxS)*(1+irateU), 4), " USD forward at ", fxF, "
+Forward Market->>You: Receive ", round((1 * fxS)*(1+irateU)/ fxF, 4), " from foward sale
+You->>European Bank: Repay EUR ", round(1 * (1+irateE), 4), " owed
+You->>You: Profit EUR ", round(profit2, 4), "
+"))
+            } else {
+                mermaid("
+graph LR
+  A(No Arbitrage)
+")
+
+            }
+            }
+        }
+    })
+    }
+
+shinyApp(ui = ui, server = server)
+#}}}
+```
+
+
+
+## 'Uncovered' Interest Arbitrage
+
+If you don't sell the currency forward, then you are engaging in uncovered interest arbitrage, meaning you are attempting to exploit an interest rate differential without using forward/futures contracts.
+
+-  *Uncovered interest arbitrage* is a inaccurate name, though, because the activity it describes is *not* an arbitrage. The trade is uncovered, and so there is exposure -- sometimes significant -- to FX risk.
+
+
+-  A better title -- and one that is often used -- is the 'Carry Trade.'
+
+
+
+## Does Someone Actually Earn These Arbitrages, and Can I?
+
+Yes, large banks earn these arbitrages every day.  The process is completely automated -- algorithms will do the trading without human intervention.
+
+- On each arbitrage however, they earn very small amounts of money.  So transaction costs become very important.  The lower your transaction costs, the smaller the arbitrage you can profitably take advantage of.
+
+-  Because an individual could never get their transaction costs as low as a large bank, they couldn't profitably take advantage of the small arbitrages which exist.  
